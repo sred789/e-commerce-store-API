@@ -5,6 +5,9 @@ from sqlalchemy.orm import DeclarativeBase, relationship, mapped_column, Mapped
 from sqlalchemy import Column, Table, Integer, String, ForeignKey, Float
 from marshmallow import ValidationError
 from typing import List, Optional
+import pandas as pd;
+from datetime import datetime
+import os
 
 app = Flask(__name__)
 
@@ -290,6 +293,36 @@ def get_products_in_order(order_id):
         return jsonify({"message": "Order not found"}), 404
 
     return products_schema.jsonify(order.products), 200
+
+
+#Export to csv
+@app.route("/users/export", methods=["GET"])
+def export_users_to_csv():
+    users = db.session.query(User).all()
+
+    data = [{
+        "id": u.id,
+        "name": u.name,
+        "email": u.email,
+        "address": u.address
+    } for u in users]
+
+    df = pd.DataFrame(data)
+
+    # Create timestamped filename
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"users_{timestamp}.csv"
+
+    # Ensure exports folder exists
+    os.makedirs("exports", exist_ok=True)
+
+    filepath = os.path.join("exports", filename)
+    df.to_csv(filepath, index=False)
+
+    return jsonify({
+        "message": "Users exported successfully",
+        "file": filename
+    }), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
